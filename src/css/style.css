@@ -171,6 +171,20 @@ header p {
   color: var(--text);
 }
 
+/* View on Strava link */
+.view-on-strava {
+  display: inline-block;
+  margin-top: 12px;
+  color: #FC5200;
+  font-weight: bold;
+  font-size: 0.8rem;
+  text-decoration: underline;
+}
+
+.view-on-strava:hover {
+  opacity: 0.85;
+}
+
 /* Connect Button */
 .connect-btn {
   display: inline-block;

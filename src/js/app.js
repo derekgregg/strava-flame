@@ -58,6 +58,7 @@ function renderCard(a) {
       <div class="activity-name">"${a.name}"</div>
       <div class="stats-grid">${statsHTML}</div>
       <div class="roast">${a.roast}</div>
+      <a href="https://www.strava.com/activities/${a.id}" target="_blank" rel="noopener" class="view-on-strava">View on Strava</a>
     </div>
   `;
 }
