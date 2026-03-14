@@ -1,0 +1,23 @@
+{
+  "name": "strava-flame",
+  "version": "1.0.0",
+  "description": "Toxic feedback bot for Strava activities",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@supabase/supabase-js": "^2.49.1"
+  },
+  "devDependencies": {
+    "vite": "^6.2.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

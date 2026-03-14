@@ -1,0 +1,308 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-hover: #1a1a1a;
+  --border: #2a2a2a;
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --toxic: #39ff14;
+  --toxic-dim: #1a7a0a;
+  --flame: #ff4500;
+  --flame-dim: #7a2200;
+}
+
+body {
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+a { color: var(--toxic); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+header {
+  text-align: center;
+  padding: 40px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 30px;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  color: var(--toxic);
+  text-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+  letter-spacing: 2px;
+}
+
+header p {
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.controls select,
+.controls button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.controls select:hover,
+.controls button:hover {
+  border-color: var(--toxic);
+}
+
+/* Activity Cards */
+.activity-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+
+.activity-card:hover {
+  border-color: var(--toxic-dim);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.card-header img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+
+.card-header .athlete-name {
+  font-weight: bold;
+  color: var(--text);
+}
+
+.card-header .activity-type {
+  background: var(--toxic-dim);
+  color: var(--toxic);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: auto;
+}
+
+.card-header .activity-date {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.activity-name {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+  font-style: italic;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  background: var(--bg);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  font-size: 1rem;
+  color: var(--toxic);
+  font-weight: bold;
+}
+
+.roast {
+  background: linear-gradient(135deg, rgba(255, 69, 0, 0.08), rgba(57, 255, 20, 0.05));
+  border-left: 3px solid var(--flame);
+  padding: 14px 16px;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Connect Button */
+.connect-btn {
+  display: inline-block;
+  background: var(--flame);
+  color: white;
+  padding: 12px 28px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.connect-btn:hover {
+  opacity: 0.85;
+  text-decoration: none;
+}
+
+/* Admin Panel */
+.admin-login {
+  max-width: 400px;
+  margin: 80px auto;
+  text-align: center;
+}
+
+.admin-login input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.athlete-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.athlete-row img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.athlete-row .name { flex: 1; }
+
+.athlete-row button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.athlete-row button:hover { border-color: var(--toxic); }
+.athlete-row button.danger { border-color: var(--flame); color: var(--flame); }
+.athlete-row button.danger:hover { background: var(--flame-dim); }
+
+.badge-tracked {
+  background: var(--toxic-dim);
+  color: var(--toxic);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+.badge-untracked {
+  background: var(--flame-dim);
+  color: var(--flame);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+/* Callback */
+.callback-msg {
+  text-align: center;
+  padding: 80px 20px;
+}
+
+.callback-msg h2 { color: var(--toxic); margin-bottom: 16px; }
+.callback-msg.error h2 { color: var(--flame); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  border-top: 1px solid var(--border);
+  margin-top: 40px;
+}
+
+footer img {
+  height: 24px;
+  margin-top: 8px;
+  opacity: 0.6;
+}
+
+/* Loading */
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  header h1 { font-size: 1.8rem; }
+  .controls { flex-direction: column; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .card-header { flex-wrap: wrap; }
+}

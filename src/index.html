@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strava Flame - Toxic Feedback</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>STRAVA FLAME</h1>
+      <p>Your friends' activities, roasted mercilessly</p>
+    </header>
+
+    <div class="controls">
+      <select id="filter-athlete">
+        <option value="">All Athletes</option>
+      </select>
+      <select id="filter-sport">
+        <option value="">All Sports</option>
+        <option value="Ride">Ride</option>
+        <option value="Run">Run</option>
+        <option value="Walk">Walk</option>
+        <option value="Hike">Hike</option>
+        <option value="Swim">Swim</option>
+        <option value="WeightTraining">Weights</option>
+      </select>
+      <select id="sort-by">
+        <option value="start_date">Newest</option>
+        <option value="distance">Distance</option>
+        <option value="average_speed">Speed</option>
+        <option value="moving_time">Duration</option>
+        <option value="elevation_gain">Elevation</option>
+      </select>
+      <a href="/api/strava-auth" class="connect-btn">Connect Strava</a>
+    </div>
+
+    <div id="leaderboard">
+      <div class="loading">Loading roasts...</div>
+    </div>
+
+    <footer>
+      <p>Powered by spite and Claude AI</p>
+      <img src="https://developers.strava.com/images/logos/api_logo_pwrdBy_strava_horiz_gray.svg" alt="Powered by Strava">
+    </footer>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

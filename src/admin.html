@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strava Flame - Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ADMIN PANEL</h1>
+      <p><a href="/">Back to leaderboard</a></p>
+    </header>
+
+    <div id="login-form" class="admin-login">
+      <h2>Enter Admin Secret</h2>
+      <input type="password" id="admin-secret" placeholder="Admin secret...">
+      <button class="connect-btn" id="login-btn">Login</button>
+    </div>
+
+    <div id="admin-panel" style="display:none;">
+      <h2 style="margin-bottom: 16px; color: var(--toxic);">Tracked Athletes</h2>
+      <div id="athletes-list"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>
