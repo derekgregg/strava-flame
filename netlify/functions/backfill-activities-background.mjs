@@ -28,8 +28,8 @@ async function backfill(athleteId) {
 
   if (!athlete) return;
 
-  // Last 30 days
-  const after = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
+  // Last 7 days (Strava API terms: max 7-day cache)
+  const after = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
   const activities = await getAthleteActivities(athleteId, after);
   console.log(`Backfill: found ${activities.length} activities for athlete ${athleteId}`);
 

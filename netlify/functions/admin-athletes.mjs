@@ -16,7 +16,7 @@ export default async (req) => {
   if (req.method === 'GET') {
     const { data, error } = await db
       .from('athletes')
-      .select('id, firstname, lastname, profile_pic, is_tracked, created_at')
+      .select('id, firstname, lastname, profile_pic, is_tracked, share_with_group, created_at')
       .order('created_at', { ascending: false });
 
     if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS athletes (
   refresh_token TEXT,
   token_expires_at BIGINT,
   is_tracked BOOLEAN DEFAULT true,
+  share_with_group BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

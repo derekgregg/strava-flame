@@ -13,9 +13,12 @@ export default async (req) => {
   const ascending = order === 'asc';
 
   const db = getSupabase();
+
+  // Only show activities from athletes who opted in to group sharing
   let query = db
     .from('activities')
-    .select('*, athletes(id, firstname, lastname, profile_pic)')
+    .select('*, athletes!inner(id, firstname, lastname, profile_pic, share_with_group)')
+    .eq('athletes.share_with_group', true)
     .not('roast', 'is', null)
     .order(sortCol, { ascending })
     .limit(limit);
@@ -30,11 +33,12 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: 'Query failed' }), { status: 500 });
   }
 
-  // Also get list of athletes for filter dropdown
+  // Only show opted-in athletes in filter dropdown
   const { data: athletes } = await db
     .from('athletes')
     .select('id, firstname, lastname')
     .eq('is_tracked', true)
+    .eq('share_with_group', true)
     .order('firstname');
 
   return new Response(JSON.stringify({ activities: data || [], athletes: athletes || [] }), {

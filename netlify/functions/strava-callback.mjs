@@ -30,7 +30,7 @@ export default async (req) => {
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `${process.env.SITE_URL}/callback.html?success=true&name=${encodeURIComponent(athlete.firstname)}`,
+        Location: `${process.env.SITE_URL}/callback.html?success=true&name=${encodeURIComponent(athlete.firstname)}&athlete_id=${athlete.id}`,
       },
     });
   } catch (err) {

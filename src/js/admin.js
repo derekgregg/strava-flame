@@ -64,6 +64,9 @@ function renderAthletes(athletes) {
       <span class="${a.is_tracked ? 'badge-tracked' : 'badge-untracked'}">
         ${a.is_tracked ? 'Tracked' : 'Paused'}
       </span>
+      <span class="${a.share_with_group ? 'badge-tracked' : 'badge-untracked'}">
+        ${a.share_with_group ? 'Sharing' : 'Private'}
+      </span>
       <button onclick="toggleAthlete(${a.id}, ${!a.is_tracked})">
         ${a.is_tracked ? 'Pause' : 'Track'}
       </button>
