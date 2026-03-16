@@ -30,7 +30,8 @@ function formatSpeed(mps) {
 function buildPrompt(activity, athlete) {
   const stats = [];
   stats.push(`Activity type: ${activity.sport_type}`);
-  stats.push(`Name: "${activity.name}"`);
+  if (activity.name) stats.push(`Name: "${activity.name}"`);
+  if (activity.description) stats.push(`Athlete's description: "${activity.description}"`);
   if (activity.distance > 0) stats.push(`Distance: ${formatDistance(activity.distance)}`);
   stats.push(`Moving time: ${formatDuration(activity.moving_time)}`);
   stats.push(`Elapsed time: ${formatDuration(activity.elapsed_time)}`);

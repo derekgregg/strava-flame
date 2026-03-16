@@ -17,7 +17,7 @@ export default async (req) => {
   }
 
   const body = await req.json();
-  const { filename, data, name } = body;
+  const { filename, data, name, description } = body;
 
   if (!filename || !data) {
     return new Response(JSON.stringify({ error: 'Missing filename or data' }), { status: 400 });
@@ -90,6 +90,7 @@ export default async (req) => {
     file_format: ext,
     file_size: fileBuffer.length,
     activity_name: name || null,
+    activity_description: description || null,
     status: 'pending',
   });
 

@@ -42,6 +42,9 @@ export const handler = async (event) => {
 
     // Use user-provided name if available, fall back to parsed name, or generic
     activity.name = upload.activity_name || activity.name || (activity.sport_type || 'Activity');
+    if (upload.activity_description) {
+      activity.description = upload.activity_description;
+    }
 
     // Get user
     const { data: user } = await db

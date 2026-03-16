@@ -109,6 +109,7 @@ CREATE TABLE uploads (
   file_format TEXT NOT NULL,
   file_size INTEGER,
   activity_name TEXT,
+  activity_description TEXT,
   status TEXT DEFAULT 'pending',
   error_message TEXT,
   activity_id BIGINT REFERENCES activities(id),

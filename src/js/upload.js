@@ -32,8 +32,12 @@ async function init() {
 
       <div class="upload-fields" id="upload-fields" style="display: none;">
         <div class="settings-field">
-          <label for="activity-name">Activity Name</label>
+          <label for="activity-name">Activity Name <span class="text-muted">(optional)</span></label>
           <input type="text" id="activity-name" placeholder="e.g. Morning Ride">
+        </div>
+        <div class="settings-field">
+          <label for="activity-description">Description <span class="text-muted">(optional — Le Directeur will use this as ammo)</span></label>
+          <textarea id="activity-description" placeholder="e.g. Felt great until the last climb" rows="2" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.9rem; width: 100%; max-width: 400px; resize: vertical;"></textarea>
         </div>
         <div class="upload-file-info" id="file-info"></div>
         <button class="connect-btn" id="upload-btn">Upload & Analyze</button>
@@ -127,6 +131,7 @@ function setupUpload() {
           filename: selectedFile.name,
           data: base64,
           name: nameInput.value.trim() || undefined,
+          description: document.getElementById('activity-description').value.trim() || undefined,
         }),
       });
 
