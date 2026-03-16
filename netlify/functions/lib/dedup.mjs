@@ -12,38 +12,58 @@ export function computeDedupKey(activity) {
   return `${startMinute}:${durationMinute}:${distanceHecto}`;
 }
 
-// Check if a duplicate activity already exists for this user.
-// Returns the existing activity if found, null otherwise.
+// Check if an activity already exists for this user.
+// Returns the existing activity row if found, null otherwise.
 //
 // Strategy:
-// 1. Exact match on source_platform + source_activity_id (same activity re-processed)
-// 2. Dedup key match for same user (cross-platform duplicate)
-// 3. Time window overlap (start within 2min, duration within 10%, distance within 10%)
-export async function findDuplicate(userId, activity, sourcePlatform, sourceActivityId) {
+// 1. Check platform_links — does this exact platform:id already exist?
+// 2. Dedup key match — same fingerprint for this user
+// 3. Fuzzy time/distance overlap — start within 2min, duration/distance within 10%
+export async function findDuplicate(userId, activity, platform, platformActivityId) {
   const db = getSupabase();
 
-  // Layer 1: Same source — this is an update, not a duplicate
-  if (sourceActivityId) {
+  // Layer 1: This exact source already linked to an activity
+  if (platformActivityId) {
+    // Check platform_links JSONB for this platform:id
     const { data } = await db
       .from('activities')
-      .select('id, source_platform')
-      .eq('source_platform', sourcePlatform)
-      .eq('source_activity_id', sourceActivityId)
+      .select('id')
+      .eq('user_id', userId)
+      .contains('platform_links', { [platform]: platformActivityId })
       .single();
     if (data) return { ...data, reason: 'same_source' };
+
+    // Fallback: check source_platform + source_activity_id columns
+    const { data: legacy } = await db
+      .from('activities')
+      .select('id')
+      .eq('source_platform', platform)
+      .eq('source_activity_id', platformActivityId)
+      .single();
+    if (legacy) return { ...legacy, reason: 'same_source' };
   }
 
-  // Layer 2: Dedup key match
+  // Layer 2: Dedup key match (same user, different source)
   const dedupKey = computeDedupKey(activity);
   if (dedupKey && userId) {
     const { data } = await db
       .from('activities')
-      .select('id, source_platform, source_activity_id')
+      .select('id')
       .eq('user_id', userId)
       .eq('dedup_key', dedupKey)
-      .neq('source_platform', sourcePlatform)
       .single();
-    if (data) return { ...data, reason: 'dedup_key' };
+    if (data) {
+      // Check if this source is already linked
+      const { data: full } = await db
+        .from('activities')
+        .select('id, platform_links')
+        .eq('id', data.id)
+        .single();
+      if (full?.platform_links?.[platform] === platformActivityId) {
+        return { ...full, reason: 'same_source' };
+      }
+      return { ...data, reason: 'dedup_key' };
+    }
   }
 
   // Layer 3: Fuzzy time/distance overlap
@@ -54,9 +74,8 @@ export async function findDuplicate(userId, activity, sourcePlatform, sourceActi
 
     const { data: candidates } = await db
       .from('activities')
-      .select('id, source_platform, source_activity_id, moving_time, distance')
+      .select('id, moving_time, distance')
       .eq('user_id', userId)
-      .neq('source_platform', sourcePlatform)
       .gte('start_date', windowStart)
       .lte('start_date', windowEnd);
 
@@ -74,12 +93,4 @@ export async function findDuplicate(userId, activity, sourcePlatform, sourceActi
   }
 
   return null;
-}
-
-// Source priority for choosing which platform's data to use as primary.
-// Strava is highest because of "View on Strava" link requirement.
-const PRIORITY = { upload: 0, garmin: 1, wahoo: 2, strava: 3 };
-
-export function shouldBecomePrimary(existingSource, newSource) {
-  return (PRIORITY[newSource] || 0) > (PRIORITY[existingSource] || 0);
 }

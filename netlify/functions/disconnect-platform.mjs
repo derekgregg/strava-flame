@@ -32,11 +32,35 @@ export default async (req) => {
     });
   }
 
-  // Delete activities from this platform
+  // Get all activities for this user that have this platform linked
+  const { data: activities } = await db
+    .from('activities')
+    .select('id, platform_links')
+    .eq('user_id', userId)
+    .contains('platform_links', { [platform]: '' })
+    .not('platform_links', 'is', null);
+
+  // For activities linked ONLY to this platform, delete them.
+  // For activities linked to multiple platforms, remove this platform's link.
+  if (activities) {
+    for (const a of activities) {
+      const links = { ...(a.platform_links || {}) };
+      delete links[platform];
+
+      if (Object.keys(links).length === 0) {
+        await db.from('activities').delete().eq('id', a.id);
+      } else {
+        await db.from('activities').update({ platform_links: links }).eq('id', a.id);
+      }
+    }
+  }
+
+  // Also clean up any activities only tracked via source_platform (legacy)
   await db.from('activities')
     .delete()
     .eq('user_id', userId)
-    .eq('source_platform', platform);
+    .eq('source_platform', platform)
+    .or('platform_links.is.null,platform_links.eq.{}');
 
   // Remove the platform connection
   await db.from('platform_connections')

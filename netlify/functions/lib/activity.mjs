@@ -2,81 +2,65 @@ import { getSupabase } from './supabase.mjs';
 import { generateRoast } from './claude.mjs';
 import { computeDedupKey, findDuplicate } from './dedup.mjs';
 
-// Build a platform link entry
-function platformLink(platform, platformActivityId) {
-  return { [platform]: platformActivityId };
-}
-
-// Store an activity from any platform and generate a roast.
-// When a cross-platform duplicate is detected, merge platform links
-// so the card shows "View on Strava" + "View on Garmin" etc.
+// Store an activity and generate commentary.
+// An activity is the top-level object. It may be linked to one or more
+// sources (strava, garmin, wahoo, upload) via platform_links.
 export async function processActivity({ userId, platform, platformActivityId, activity, user }) {
   const db = getSupabase();
   const dedupKey = computeDedupKey(activity);
 
-  // Check for duplicates
+  // Check if this activity already exists
   const dup = await findDuplicate(userId, activity, platform, platformActivityId);
 
   if (dup) {
-    if (dup.reason === 'same_source') {
-      // Same activity re-processed — update it
-      await db.from('activities').update({
-        name: activity.name,
-        distance: activity.distance,
-        moving_time: activity.moving_time,
-        elapsed_time: activity.elapsed_time,
-        elevation_gain: activity.total_elevation_gain,
-        average_speed: activity.average_speed,
-        max_speed: activity.max_speed,
-        average_watts: activity.average_watts || null,
-        max_watts: activity.max_watts || null,
-        suffer_score: activity.suffer_score || null,
-        sport_type: activity.sport_type,
-        dedup_key: dedupKey,
-        external_id: activity.external_id || null,
-      }).eq('id', dup.id);
-      return { stored: true, reason: 'updated', activityDbId: dup.id };
-    }
-
-    // Cross-platform duplicate — merge platform links and fill missing data
+    // Activity already exists — merge this source into it
     const { data: existing } = await db
       .from('activities')
-      .select('platform_links, average_watts, max_watts, suffer_score, source_platform')
+      .select('platform_links, average_watts, max_watts, suffer_score, avg_heart_rate, max_heart_rate, avg_cadence, normalized_power, lap_data, enrichment_data')
       .eq('id', dup.id)
       .single();
 
     const mergedLinks = {
       ...(existing?.platform_links || {}),
-      [dup.source_platform]: dup.source_activity_id,
       [platform]: platformActivityId,
     };
 
-    const mergeFields = {
-      platform_links: mergedLinks,
-    };
+    const updates = { platform_links: mergedLinks };
 
-    // Fill in missing data from the new source
-    if (!existing?.average_watts && activity.average_watts) mergeFields.average_watts = activity.average_watts;
-    if (!existing?.max_watts && activity.max_watts) mergeFields.max_watts = activity.max_watts;
-    if (!existing?.suffer_score && activity.suffer_score) mergeFields.suffer_score = activity.suffer_score;
-
-    // If the new source is Strava and existing isn't, also store the Strava ID
-    // so "View on Strava" link works (required by Strava API agreement)
-    if (platform === 'strava' && existing?.source_platform !== 'strava') {
-      mergeFields.source_platform = 'strava';
-      mergeFields.source_activity_id = platformActivityId;
+    // Fill in missing data from the new source (richer source wins per field)
+    if (!existing?.average_watts && activity.average_watts) updates.average_watts = activity.average_watts;
+    if (!existing?.max_watts && activity.max_watts) updates.max_watts = activity.max_watts;
+    if (!existing?.suffer_score && activity.suffer_score) updates.suffer_score = activity.suffer_score;
+    if (!existing?.avg_heart_rate && activity.average_heartrate) updates.avg_heart_rate = activity.average_heartrate;
+    if (!existing?.max_heart_rate && activity.max_heartrate) updates.max_heart_rate = activity.max_heartrate;
+    if (!existing?.avg_cadence && activity.avg_cadence) updates.avg_cadence = activity.avg_cadence;
+    if (!existing?.normalized_power && activity.normalized_power) updates.normalized_power = activity.normalized_power;
+    if (!existing?.lap_data && activity.lap_data) updates.lap_data = activity.lap_data;
+    if (!existing?.enrichment_data && activity.power_curve) {
+      updates.enrichment_data = { power_curve: activity.power_curve };
     }
 
-    await db.from('activities').update(mergeFields).eq('id', dup.id);
-    console.log(`Merged ${platform} activity ${platformActivityId} into existing ${dup.source_platform} activity ${dup.id}`);
-    return { stored: true, reason: 'merged', activityDbId: dup.id };
+    // If the same source is updating, also refresh core fields
+    if (dup.reason === 'same_source') {
+      updates.name = activity.name;
+      updates.distance = activity.distance;
+      updates.moving_time = activity.moving_time;
+      updates.elapsed_time = activity.elapsed_time;
+      updates.elevation_gain = activity.total_elevation_gain;
+      updates.average_speed = activity.average_speed;
+      updates.max_speed = activity.max_speed;
+      updates.sport_type = activity.sport_type;
+      updates.dedup_key = dedupKey;
+    }
+
+    await db.from('activities').update(updates).eq('id', dup.id);
+    console.log(`Merged ${platform}:${platformActivityId} into activity ${dup.id}`);
+    return { stored: true, reason: dup.reason === 'same_source' ? 'updated' : 'merged', activityDbId: dup.id };
   }
 
-  // No duplicate — insert new activity
+  // New activity — insert
   const row = {
     user_id: userId,
-    source_platform: platform,
-    source_activity_id: platformActivityId,
     name: activity.name,
     distance: activity.distance,
     moving_time: activity.moving_time,
@@ -91,8 +75,11 @@ export async function processActivity({ userId, platform, platformActivityId, ac
     sport_type: activity.sport_type,
     dedup_key: dedupKey,
     external_id: activity.external_id || null,
-    platform_links: platformLink(platform, platformActivityId),
-    // Enrichment fields (from file uploads)
+    platform_links: { [platform]: platformActivityId },
+    // Source tracking (kept for queries and backwards compat)
+    source_platform: platform,
+    source_activity_id: platformActivityId,
+    // Enrichment fields
     normalized_power: activity.normalized_power || null,
     avg_cadence: activity.avg_cadence || null,
     max_cadence: activity.max_cadence || null,
@@ -103,15 +90,15 @@ export async function processActivity({ userId, platform, platformActivityId, ac
     enrichment_data: activity.power_curve ? { power_curve: activity.power_curve } : null,
   };
 
-  // Keep legacy athlete_id for Strava activities during migration
+  // Keep legacy athlete_id for Strava during migration
   if (platform === 'strava') {
-    row.athlete_id = parseInt(platformActivityId.split(':')[0]) || null;
+    row.athlete_id = parseInt(platformActivityId) || null;
     row.id = parseInt(platformActivityId) || undefined;
   }
 
   const { data: inserted, error } = await db
     .from('activities')
-    .upsert(row, { onConflict: platform === 'strava' ? 'id' : 'source_platform,source_activity_id' })
+    .upsert(row)
     .select('id')
     .single();
 
@@ -122,11 +109,9 @@ export async function processActivity({ userId, platform, platformActivityId, ac
 
   const activityDbId = inserted?.id || row.id;
 
-  // Generate roast
+  // Generate commentary
   try {
-    if (user?.weight) {
-      activity.athlete_weight = user.weight;
-    }
+    if (user?.weight) activity.athlete_weight = user.weight;
     const roast = await generateRoast(activity, {
       firstname: user?.display_name?.split(' ')[0] || '?',
       lastname: user?.display_name?.split(' ').slice(1).join(' ') || '',
@@ -135,9 +120,9 @@ export async function processActivity({ userId, platform, platformActivityId, ac
       .from('activities')
       .update({ roast, roast_generated_at: new Date().toISOString() })
       .eq('id', activityDbId);
-    console.log(`Roast generated for ${platform} activity ${platformActivityId}`);
+    console.log(`Commentary generated for activity ${activityDbId}`);
   } catch (err) {
-    console.error(`Roast generation failed for ${platformActivityId}:`, err);
+    console.error(`Commentary generation failed for activity ${activityDbId}:`, err);
   }
 
   return { stored: true, reason: 'new', activityDbId };

@@ -169,7 +169,7 @@ async function loadFeed() {
         <div class="feed-header">
           <span class="feed-name">${a.name}</span>
           <span class="feed-date">${new Date(a.start_date).toLocaleDateString()}</span>
-          <span class="platform-badge badge-${a.source_platform || 'strava'}">${a.source_platform || 'strava'}</span>
+          ${Object.keys(a.platform_links || {}).map(p => `<span class="platform-badge badge-${p}">${p}</span>`).join(' ') || `<span class="platform-badge badge-${a.source_platform || 'strava'}">${a.source_platform || 'strava'}</span>`}
         </div>
         ${a.roast ? `<div class="roast">${a.roast}</div>` : ''}
       </div>

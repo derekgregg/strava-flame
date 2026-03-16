@@ -35,22 +35,25 @@ function formatDate(iso) {
   });
 }
 
-function platformBadge(platform) {
+function platformBadges(activity) {
+  const links = activity.platform_links || {};
   const labels = { strava: 'Strava', wahoo: 'Wahoo', garmin: 'Garmin', upload: 'Upload' };
   const classes = { strava: 'badge-strava', wahoo: 'badge-wahoo', garmin: 'badge-garmin', upload: 'badge-upload' };
-  return `<span class="platform-badge ${classes[platform] || ''}">${labels[platform] || platform}</span>`;
+
+  const platforms = Object.keys(links);
+
+  // Fallback for legacy data without platform_links
+  if (!platforms.length && activity.source_platform) {
+    platforms.push(activity.source_platform);
+  }
+
+  return platforms
+    .map(p => `<span class="platform-badge ${classes[p] || ''}">${labels[p] || p}</span>`)
+    .join(' ');
 }
 
 function activityLinks(activity) {
   const links = activity.platform_links || {};
-  const fallbackPlatform = activity.source_platform || 'strava';
-  const fallbackId = activity.source_activity_id || activity.id;
-
-  // Ensure at least the primary source is in the links
-  if (!Object.keys(links).length) {
-    links[fallbackPlatform] = String(fallbackId);
-  }
-
   const parts = [];
 
   if (links.strava) {
@@ -61,6 +64,12 @@ function activityLinks(activity) {
   }
   if (links.wahoo) {
     parts.push(`<span class="view-on-wahoo">Recorded with Wahoo</span>`);
+  }
+
+  // Legacy fallback
+  if (!parts.length && activity.source_platform === 'strava') {
+    const id = activity.source_activity_id || activity.id;
+    parts.push(`<a href="https://www.strava.com/activities/${id}" target="_blank" rel="noopener" class="view-on-strava">View on Strava</a>`);
   }
 
   return parts.join(' ');
@@ -84,15 +93,13 @@ function renderCard(a) {
     .map((s) => `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`)
     .join('');
 
-  const platform = a.source_platform || 'strava';
-
   return `
     <div class="activity-card">
       <div class="card-header">
         ${profilePic ? `<img src="${profilePic}" alt="" onerror="this.style.display='none'">` : ''}
         <span class="athlete-name">${displayName}</span>
         <span class="activity-date">${formatDate(a.start_date)}</span>
-        ${platformBadge(platform)}
+        ${platformBadges(a)}
         <span class="activity-type">${a.sport_type}</span>
       </div>
       <div class="activity-name">"${a.name}"</div>

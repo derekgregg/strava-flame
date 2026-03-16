@@ -190,7 +190,7 @@ async function loadRecentUploads() {
     const res = await fetch('/api/get-feed?limit=10');
     const data = await res.json();
 
-    const uploads = (data.activities || []).filter(a => a.source_platform === 'upload');
+    const uploads = (data.activities || []).filter(a => a.platform_links?.upload);
     if (!uploads.length) {
       el.innerHTML = '<p class="text-muted">No uploaded activities yet.</p>';
       return;
