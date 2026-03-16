@@ -48,6 +48,11 @@ export const handler = async (event) => {
     sport_type: activity.sport_type || activity.type,
   });
 
+  // Attach athlete weight for W/kg calculation in roast prompt
+  if (athlete.weight) {
+    activity.athlete_weight = athlete.weight;
+  }
+
   // Generate roast
   try {
     const roast = await generateRoast(activity, athlete);

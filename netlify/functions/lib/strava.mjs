@@ -110,6 +110,7 @@ export async function upsertAthlete(tokenData) {
     firstname: athlete.firstname,
     lastname: athlete.lastname,
     profile_pic: athlete.profile_medium || athlete.profile,
+    weight: athlete.weight || null,
     access_token: tokenData.access_token,
     refresh_token: tokenData.refresh_token,
     token_expires_at: tokenData.expires_at,

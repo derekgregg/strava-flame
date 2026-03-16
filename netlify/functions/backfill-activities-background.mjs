@@ -65,6 +65,11 @@ async function backfill(athleteId) {
 
     await db.from('activities').upsert(activityRow);
 
+    // Attach athlete weight for W/kg calculation in roast prompt
+    if (athlete.weight) {
+      activity.athlete_weight = athlete.weight;
+    }
+
     // Generate roast
     try {
       const roast = await generateRoast(activity, athlete);
