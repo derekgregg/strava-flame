@@ -35,11 +35,11 @@ async function backfillStrava(userId, athleteId) {
   console.log(`Backfill: found ${activities.length} Strava activities for athlete ${athleteId}`);
 
   for (const summary of activities) {
-    // Check if already stored
+    // Check if already stored (dedup handles cross-platform, this just skips re-fetching)
     const { data: existing } = await db
       .from('activities')
       .select('id')
-      .or(`id.eq.${summary.id},and(source_platform.eq.strava,source_activity_id.eq.${summary.id})`)
+      .contains('platform_links', { strava: String(summary.id) })
       .single();
 
     if (existing) continue;
