@@ -15,11 +15,7 @@ async function init() {
     content.innerHTML = `
       <div class="empty-state">
         <p>You need to be logged in to upload activities.</p>
-        <div class="connect-buttons" style="margin-top: 20px; justify-content: center;">
-          <a href="/api/strava-auth" class="connect-btn strava-btn">Connect Strava</a>
-          <a href="/api/wahoo-auth" class="connect-btn wahoo-btn">Connect Wahoo</a>
-          <a href="/api/garmin-auth" class="connect-btn garmin-btn">Connect Garmin</a>
-        </div>
+        <a href="/api/google-auth" class="connect-btn google-btn" style="margin-top: 20px;">Sign in with Google</a>
       </div>
     `;
     return;

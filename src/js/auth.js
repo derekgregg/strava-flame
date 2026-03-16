@@ -1,7 +1,7 @@
 const msg = document.getElementById('callback-message');
 const params = new URLSearchParams(window.location.search);
 
-const platformLabels = { strava: 'Strava', wahoo: 'Wahoo', garmin: 'Garmin' };
+const platformLabels = { strava: 'Strava', wahoo: 'Wahoo', garmin: 'Garmin', google: 'Google' };
 const platform = params.get('platform') || 'strava';
 const platformLabel = platformLabels[platform] || platform;
 

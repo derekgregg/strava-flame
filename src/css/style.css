@@ -139,6 +139,7 @@ header p {
 .strava-btn { background: var(--strava-orange); }
 .wahoo-btn { background: var(--wahoo-blue); }
 .garmin-btn { background: var(--garmin-green); }
+.google-btn { background: #4285f4; }
 
 /* Platform badges */
 .platform-badge {

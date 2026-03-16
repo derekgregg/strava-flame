@@ -111,29 +111,29 @@ function renderCard(a) {
 }
 
 async function checkAuth() {
+  const loginBtn = document.getElementById('login-btn');
   try {
     const res = await fetch('/api/get-user');
     const data = await res.json();
     if (data.user) {
+      // Logged in — show nav, hide login button, show platform connect buttons
       userNav.classList.remove('hidden');
       userGreeting.textContent = data.user.display_name;
-      // Hide connect buttons for already-connected platforms
+      if (loginBtn) loginBtn.classList.add('hidden');
+      connectButtons.classList.remove('hidden');
+
+      // Hide already-connected platforms
       if (data.connections) {
         const connected = data.connections.map(c => c.platform);
-        if (connected.includes('strava')) {
-          const btn = document.querySelector('.strava-btn');
-          if (btn) btn.classList.add('hidden');
+        for (const p of ['strava', 'wahoo', 'garmin']) {
+          if (connected.includes(p)) {
+            const btn = document.querySelector(`.${p}-btn`);
+            if (btn) btn.classList.add('hidden');
+          }
         }
-        if (connected.includes('wahoo')) {
-          const btn = document.querySelector('.wahoo-btn');
-          if (btn) btn.classList.add('hidden');
-        }
-        if (connected.includes('garmin')) {
-          const btn = document.querySelector('.garmin-btn');
-          if (btn) btn.classList.add('hidden');
-        }
-        // If all connected, hide the connect buttons container
-        if (connected.length >= 3) connectButtons.classList.add('hidden');
+        // Hide container if all fitness platforms connected
+        const fitnessPlatforms = connected.filter(p => ['strava', 'wahoo', 'garmin'].includes(p));
+        if (fitnessPlatforms.length >= 3) connectButtons.classList.add('hidden');
       }
     }
   } catch {
