@@ -6,10 +6,9 @@ import { getSupabase } from './supabase.mjs';
 export function computeDedupKey(activity) {
   const startMs = new Date(activity.start_date).getTime();
   const startMinute = Math.floor(startMs / 60000);
-  const durationMinute = Math.round((activity.moving_time || 0) / 60);
   const distanceHecto = Math.round((activity.distance || 0) / 100);
 
-  return `${startMinute}:${durationMinute}:${distanceHecto}`;
+  return `${startMinute}:${distanceHecto}`;
 }
 
 // Check if an activity already exists for this user.
@@ -74,18 +73,18 @@ export async function findDuplicate(userId, activity, platform, platformActivity
 
     const { data: candidates } = await db
       .from('activities')
-      .select('id, moving_time, distance')
+      .select('id, distance')
       .eq('user_id', userId)
       .gte('start_date', windowStart)
       .lte('start_date', windowEnd);
 
     if (candidates) {
       for (const c of candidates) {
-        const durationMatch = !activity.moving_time || !c.moving_time ||
-          Math.abs(activity.moving_time - c.moving_time) / Math.max(activity.moving_time, c.moving_time) < 0.1;
+        // Match on distance only (within 15%) — duration is unreliable
+        // across platforms (Strava excludes stopped time, Garmin doesn't)
         const distanceMatch = !activity.distance || !c.distance ||
-          Math.abs(activity.distance - c.distance) / Math.max(activity.distance, c.distance) < 0.1;
-        if (durationMatch && distanceMatch) {
+          Math.abs(activity.distance - c.distance) / Math.max(activity.distance, c.distance) < 0.15;
+        if (distanceMatch) {
           return { ...c, reason: 'fuzzy_match' };
         }
       }
