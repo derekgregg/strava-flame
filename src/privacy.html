@@ -50,12 +50,21 @@
         <li>Heart rate data (if available)</li>
         <li>Suffer score (Strava only, if available)</li>
         <li>Device name (Garmin only, for required attribution)</li>
+        <li>GPS tracks and location data (from uploaded activity files)</li>
+        <li>Lap and split data (if available)</li>
+        <li>Cadence and temperature data (if available)</li>
+      </ul>
+
+      <h3>Google Sign-In Data</h3>
+      <p>If you sign in with Google, we collect:</p>
+      <ul>
+        <li>Your Google profile name and picture</li>
+        <li>Your Google account ID (for authentication)</li>
+        <li>Your email address (stored only for account identification, never shared or used for marketing)</li>
       </ul>
 
       <h3>What We Do NOT Collect</h3>
       <ul>
-        <li>GPS tracks or location data</li>
-        <li>Email addresses</li>
         <li>Payment information</li>
         <li>Photos or social content</li>
         <li>Health data beyond what is listed above</li>
@@ -69,13 +78,15 @@
         <li><strong>Garmin:</strong> Via the Garmin Connect API with OAuth 2.0 PKCE authorization. We request activity read access.</li>
       </ul>
       <p>New activities are delivered to us via webhooks (push notifications) from each platform. We do not poll or scrape any platform.</p>
+      <p>You may also <strong>upload activity files</strong> (.FIT, .GPX, .TCX) directly. These files are parsed server-side to extract activity data, including GPS tracks, and are deleted from our storage after processing.</p>
 
       <h2>4. How We Use Your Data</h2>
       <p>Your activity data is used for one purpose: <strong>generating AI-powered commentary</strong> on your workouts using the Claude API (by Anthropic). Specifically:</p>
       <ul>
-        <li>Activity statistics (distance, time, speed, power, etc.) are sent to the Claude API as context for generating a short humorous commentary about the activity.</li>
+        <li>Activity statistics (distance, time, speed, power, lap splits, etc.) are sent to the Claude API as context for generating a short humorous commentary about the activity.</li>
+        <li>GPS tracks from uploaded files are used to compute distance and elevation. GPS coordinates are <strong>not</strong> sent to the Claude API or displayed to other users.</li>
         <li>We use Claude for <strong>inference only</strong>. Your data is never used for model training, fine-tuning, or building datasets.</li>
-        <li>If you opt in to group sharing, your activities and commentary are displayed on the shared leaderboard visible to other opted-in users.</li>
+        <li>If you opt in to group sharing, your activities and commentary are displayed on the shared leaderboard visible to other opted-in users. GPS tracks are never shared.</li>
       </ul>
 
       <h2>5. How We Share Your Data</h2>
@@ -85,6 +96,8 @@
         <li><strong>With other users (only with your consent):</strong> If you enable "Share my activities with the group," your activity data and commentary are visible to other opted-in users on the leaderboard. You can disable this at any time in Settings.</li>
         <li><strong>With Anthropic (Claude API):</strong> Activity statistics are sent to Anthropic's API to generate commentary. Anthropic processes this data according to their <a href="https://www.anthropic.com/privacy" target="_blank" rel="noopener">privacy policy</a>. No personal identifiers beyond your first name are included in API requests.</li>
         <li><strong>With Supabase:</strong> Your data is stored in a Supabase-hosted PostgreSQL database. Supabase processes data according to their <a href="https://supabase.com/privacy" target="_blank" rel="noopener">privacy policy</a>.</li>
+        <li><strong>With Netlify:</strong> The application is hosted on Netlify. Netlify processes requests according to their <a href="https://www.netlify.com/privacy/" target="_blank" rel="noopener">privacy policy</a>.</li>
+        <li><strong>With Google:</strong> If you sign in with Google, authentication is handled via Google OAuth. Google processes data according to their <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">privacy policy</a>.</li>
       </ul>
 
       <h2>6. Data Retention</h2>
@@ -92,6 +105,7 @@
         <li><strong>Strava-sourced activity data:</strong> Automatically deleted after 7 days, as required by the Strava API Agreement.</li>
         <li><strong>Wahoo-sourced activity data:</strong> Retained for up to 30 days, then automatically deleted.</li>
         <li><strong>Garmin-sourced activity data:</strong> Retained for up to 30 days, then automatically deleted.</li>
+        <li><strong>Uploaded activity files:</strong> Raw files are deleted from storage immediately after parsing. Extracted activity data follows the same 30-day retention as Wahoo/Garmin.</li>
         <li><strong>Account data:</strong> Retained until you disconnect your account or request deletion.</li>
         <li><strong>AI-generated commentary:</strong> Deleted when the associated activity is deleted.</li>
       </ul>
