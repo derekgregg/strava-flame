@@ -21,7 +21,7 @@ export async function parseActivityFile(buffer, filename) {
 
 function parseFIT(buffer) {
   return new Promise((resolve, reject) => {
-    const parser = new FitParser.default({
+    const parser = new FitParser({
       force: true,
       speedUnit: 'm/s',
       lengthUnit: 'm',
