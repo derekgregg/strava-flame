@@ -3,3 +3,7 @@ dist/
 .env
 .netlify/
 *.log
+supabase/.temp/
+.DS_Store
+*.zip
+*.fit

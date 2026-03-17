@@ -1,117 +1,155 @@
-# Flame
+# Le Directeur
 
-A community web app that generates AI-powered humorous commentary on your group's Strava activities. Friends connect their Strava accounts, and every activity gets a personalized roast displayed on a shared leaderboard.
+Your brutally honest directeur sportif. An AI-powered cycling activity analysis app that generates savage commentary on your rides.
 
-## How It Works
+## What It Does
 
-1. Athletes authorize via Strava OAuth
-2. New activities arrive via Strava's Webhook Events API
-3. Activity stats are sent to Claude (Sonnet) to generate a roast
-4. Roasts appear on the shared group leaderboard
+Upload a .FIT file, connect Strava, Wahoo, or Garmin — Le Directeur analyzes your power data, detects intervals, computes best efforts, and delivers brutally honest commentary on every ride. Activities are displayed on a shared leaderboard with route maps.
 
-Athletes must opt in to share their activities with the group. Activity data is automatically purged after 7 days per Strava's API caching policy.
+## Features
+
+- **Multi-platform:** Strava, Wahoo, Garmin, Google sign-in, direct file uploads (.FIT, .GPX, .TCX)
+- **Power analysis:** Best efforts (5s to 90min), Normalized Power, Variability Index, TSS, interval detection
+- **AI commentary:** Claude generates context-aware commentary using your FTP, weight, height, best efforts, lap splits, and intervals
+- **Route maps:** GPS tracks rendered on dark map tiles via Leaflet
+- **Activity deduplication:** Automatically merges the same ride from multiple platforms
+- **Privacy-first:** Opt-in group sharing, 7-day Strava retention, GDPR/CCPA compliant
 
 ## Tech Stack
 
-- **Frontend:** HTML/CSS/JS with Vite
-- **Backend:** Netlify Functions (Node.js)
-- **Database:** Supabase (PostgreSQL)
-- **AI:** Claude API (Sonnet) for roast generation
-- **Auth:** Strava OAuth 2.0
+- **Frontend:** HTML/CSS/JS, Vite, Leaflet
+- **Backend:** Netlify Functions (Node.js ESM)
+- **Database:** Supabase (PostgreSQL + Storage)
+- **AI:** Claude API (Sonnet) via Anthropic SDK
+- **Parsing:** fit-file-parser, fast-xml-parser
 
 ## Setup
 
 ### 1. Clone and install
 
 ```bash
-git clone git@github.com:derekgregg/strava-flame.git
-cd strava-flame
+git clone git@github.com:derekgregg/directeur.git
+cd directeur
 pnpm install
 ```
 
 ### 2. Create external services
 
-- **Supabase:** Create a project and run `supabase-schema.sql` in the SQL editor
+- **Supabase:** Create a project, run `supabase/schema.sql` in the SQL editor, create an `uploads` storage bucket (private)
 - **Strava API:** Create an app at https://developers.strava.com
+- **Google OAuth:** Create credentials at https://console.cloud.google.com
 - **Anthropic:** Get an API key at https://console.anthropic.com
 
 ### 3. Configure environment
 
-Copy `.env` and fill in your values:
+Create `.env` with:
 
 ```
 STRAVA_CLIENT_ID=
 STRAVA_CLIENT_SECRET=
-STRAVA_VERIFY_TOKEN=          # random string for webhook validation
+STRAVA_VERIFY_TOKEN=
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ANTHROPIC_API_KEY=
-ADMIN_SECRET=                 # random string for admin panel auth
-ADMIN_ATHLETE_ID=             # your Strava athlete ID
+ADMIN_SECRET=
 SITE_URL=http://localhost:8888
+JWT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_TOKEN=
 ```
 
-Set the same variables in Netlify: `netlify env:import .env`
+Optional (when platform integrations are approved):
+```
+WAHOO_CLIENT_ID=
+WAHOO_CLIENT_SECRET=
+WAHOO_WEBHOOK_TOKEN=
+GARMIN_CLIENT_ID=
+GARMIN_CLIENT_SECRET=
+```
 
-### 4. Deploy
+### 4. Run locally
 
-Push to GitHub — Netlify builds automatically from `main`.
+```bash
+pnpm run dev
+```
 
-Update `SITE_URL` in Netlify env vars to your production URL.
+### 5. Deploy
 
-### 5. Register Strava webhook
+```bash
+# Development pushes (no deploy)
+git push origin main
+
+# Production deploy
+git checkout deploy && git merge main && git push origin deploy && git checkout main
+```
+
+### 6. Register Strava webhook
 
 ```bash
 curl -X POST https://www.strava.com/api/v3/push_subscriptions \
   -F client_id=YOUR_CLIENT_ID \
   -F client_secret=YOUR_CLIENT_SECRET \
-  -F callback_url=https://your-site.netlify.app/api/strava-webhook \
+  -F callback_url=https://ledirecteur.app/api/strava-webhook \
   -F verify_token=YOUR_VERIFY_TOKEN
 ```
-
-### 6. Connect athletes
-
-Share your site URL with friends. They click "Connect Strava", authorize, and opt in to group sharing.
 
 ## Project Structure
 
 ```
-├── src/                        # Frontend (Vite)
-│   ├── index.html              # Leaderboard
-│   ├── admin.html              # Admin panel
-│   ├── callback.html           # OAuth callback
-│   ├── css/style.css
-│   └── js/
-│       ├── app.js              # Leaderboard logic
-│       ├── admin.js            # Admin panel logic
-│       └── auth.js             # OAuth callback handler
-├── netlify/functions/          # Backend
-│   ├── strava-auth.mjs         # OAuth redirect
-│   ├── strava-callback.mjs     # Token exchange
-│   ├── strava-webhook.mjs      # Webhook handler
-│   ├── generate-roast.mjs      # Regenerate roast (admin)
-│   ├── get-leaderboard.mjs     # Leaderboard API
-│   ├── admin-athletes.mjs      # Athlete management
-│   ├── athlete-preferences.mjs # Privacy opt-in
-│   ├── purge-old-activities.mjs# Daily 7-day cleanup
-│   ├── backfill-activities-background.mjs
-│   └── lib/
-│       ├── supabase.mjs
-│       ├── strava.mjs
-│       └── claude.mjs
-├── supabase-schema.sql         # Database schema
-└── netlify.toml                # Build + redirect config
+src/                              Frontend (Vite)
+  index.html                      Leaderboard
+  upload.html                     File upload page
+  settings.html                   User settings + feed
+  callback.html                   OAuth callback
+  privacy.html                    Privacy policy
+  css/style.css                   Dark green + gold theme
+  js/
+    app.js                        Leaderboard + maps
+    upload.js                     File upload + progress
+    settings.js                   Profile + connections
+    auth.js                       OAuth callback handler
+
+netlify/functions/                Backend
+  lib/
+    activity.mjs                  Unified activity processor + dedup
+    auth.mjs                      JWT sessions
+    claude.mjs                    AI prompt builder
+    dedup.mjs                     Deduplication engine
+    file-parser.mjs               FIT/GPX/TCX parser
+    garmin.mjs                    Garmin API client
+    polyline.mjs                  Polyline encoder/decoder
+    power-analysis.mjs            Best efforts, NP, intervals
+    strava.mjs                    Strava API client
+    supabase.mjs                  Database client
+    wahoo.mjs                     Wahoo API client
+  google-auth.mjs                 Google OAuth
+  strava-auth.mjs                 Strava OAuth
+  wahoo-auth.mjs                  Wahoo OAuth
+  garmin-auth.mjs                 Garmin OAuth (PKCE)
+  *-callback.mjs                  OAuth callbacks
+  *-webhook.mjs                   Platform webhooks
+  upload-activity.mjs             File upload intake
+  parse-upload-background.mjs     Async file processing
+  get-leaderboard.mjs             Public leaderboard API
+  get-feed.mjs                    Personal feed API
+  get-user.mjs                    Current user API
+  report-bug.mjs                  GitHub issue creation
+
+supabase/
+  schema.sql                      Full database schema
+  migrations/                     Incremental migrations
+
+docs/                             API references + agreements
 ```
 
-## Strava API Compliance
+## Privacy & Compliance
 
-- Athletes explicitly opt in before data is shared with the group
-- Activity data purged after 7 days
-- Deauthorization deletes all athlete data immediately
-- "Powered by Strava" attribution displayed
-- "View on Strava" links on all activity cards
-- App name does not contain "Strava"
+- Privacy policy at [ledirecteur.app/privacy.html](https://ledirecteur.app/privacy.html)
+- Strava: 7-day data retention, "View on Strava" links, "Powered by Strava" attribution
+- GDPR/CCPA compliant, opt-in data sharing
+- Claude used for inference only, never training
 
 ---
 
-Compatible with Strava
+[ledirecteur.app](https://ledirecteur.app)
