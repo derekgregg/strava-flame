@@ -43,6 +43,45 @@ function formatDate(iso) {
   });
 }
 
+const RULES = {
+  4: "It's all about the bike. It is, absolutely, without question, unequivocally, about the bike. Anyone who says otherwise is obviously a twatwaffle.",
+  5: "Harden The Fuck Up.",
+  9: "If you are out riding in bad weather, it means you are a badass. Period. Those who ride in foul weather are members of a special club of riders who love the work.",
+  10: "It never gets easier, you just go faster. As Greg LeMond tells us, training, climbing, and racing is hard. It stays hard. Training is like fighting with a gorilla. You don't stop when you're tired. You stop when the gorilla is tired.",
+  11: "Family does not come first. The bike does. Sean Kelly snapped back: \"You got the order wrong. The bike comes first.\"",
+  12: "The correct number of bikes to own is n+1. The minimum is three. This equation may also be re-written as s-1, where s is the number that would result in separation from your partner.",
+  24: "Speeds and distances shall be referred to and measured in kilometers. All of cycling's monuments are measured in the metric system and as such the English system is forbidden.",
+  33: "Shave your guns. Legs are to be carefully shaved at all times. If your legs are to be left hairy, make sure you can dish out plenty of hurt to shaved riders.",
+  42: "A bike race shall never be preceded with a swim and/or followed by a run. One should only swim to prevent drowning, and only run if being chased.",
+  43: "Don't be a jackass. But if you absolutely must be a jackass, be a funny jackass. Always remember, we're all brothers and sisters on the road.",
+  47: "Drink Tripels, don't ride triples. Beer is a recovery drink, an elixir for post-ride trash talking. If it is brewed with rice or requires a lime, you are off the path. Life is short, don't waste it on piss beer.",
+  55: "Earn your turns. Descending requires first ascending the mountain. Powered transportation solely for descending enjoyment is prohibited.",
+  56: "Espresso or macchiato only. If the word \"soy/skim latte\" is heard to be used by a member wearing cycling apparel, that person must be ceremonially beaten with CO2 canisters or mini pumps.",
+  62: "You shall not ride with earphones. Cycling is about getting outside and into the elements and you don't need to be listening to Queen or Slayer in order to experience that.",
+  67: "Do your time in the wind. Nobody likes a wheel sucker. Races are won through cooperation and spending time on the rivet.",
+  68: "Rides are to be measured by quality, not quantity. A flat ride of 150km at 23kmh is not something that should be discussed in an open forum.",
+  70: "The purpose of competing is to win. End of. Any reference to not achieving this should be referred immediately to Rule #5.",
+  71: "Train Properly. Know proper training methods and adhere to your training plan. Avoid being competitive during non-competitive training rides.",
+  72: "Legs speak louder than words. Demonstrate riding superiority and smooth technique before discussing power meters, heart rate, or other data.",
+  74: "V Meters or small computers only. Forego the data and ride on feel; little compares to the pleasure of riding as hard as your mind will allow.",
+  79: "Fight for your town lines. Town lines must be contested or at least faked during rides.",
+  81: "Don't talk it up. Rides and crashes may only be discussed and recounted in detail when the rider required external assistance in recovery or recuperation.",
+  85: "Descend like a Pro. All descents shall be undertaken at speeds commonly regarded as \"ludicrous\" or \"insane\" by those less talented. Brakes should be avoided but may be used just before corners.",
+  90: "Never Get Out of the Big Ring. If it gets steeper, just push harder on the pedals.",
+  91: "No Food On Training Rides Under Four Hours. Johan Museeuw advised: \"No food on rides under four hours. You need to lose some weight.\"",
+  93: "Descents are not for recovery. Recovery Ales are for Recovery. Descents are meant to be as hard and demanding as — and much more dangerous than — the climbs.",
+};
+
+function linkRules(text) {
+  return text.replace(/Rule\s*#(\d+)/gi, (match, num) => {
+    const rule = RULES[num];
+    if (rule) {
+      return `<span class="rule-ref" title="Rule #${num}: ${rule}">${match}</span>`;
+    }
+    return match;
+  });
+}
+
 function decodePolyline(encoded) {
   const coords = [];
   let index = 0, lat = 0, lng = 0;
@@ -124,7 +163,7 @@ function renderCard(a) {
       <div class="activity-name">"${a.name}"</div>
       <div class="stats-grid">${statsHTML}</div>
       ${a.route_polyline ? `<div class="activity-map" id="map-${a.id}"></div>` : ''}
-      <div class="roast">${a.roast}</div>
+      <div class="roast">${linkRules(a.roast)}</div>
       ${activityLinks(a)}
     </div>
   `;

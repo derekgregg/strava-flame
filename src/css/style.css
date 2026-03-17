@@ -417,6 +417,37 @@ header p {
   color: var(--text);
 }
 
+/* Rule tooltips */
+.rule-ref {
+  color: var(--gold);
+  cursor: help;
+  border-bottom: 1px dotted var(--gold);
+  position: relative;
+}
+
+.rule-ref:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-style: normal;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  width: 280px;
+  white-space: normal;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  pointer-events: none;
+  margin-bottom: 6px;
+}
+
 /* View on Strava link */
 .view-on-strava {
   display: inline-block;
