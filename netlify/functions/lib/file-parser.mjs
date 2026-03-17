@@ -51,20 +51,59 @@ function parseFIT(buffer) {
         generic: 'Workout',
       };
 
+      // Compute fallback stats from records when session summary is incomplete
+      const distance = session.total_distance || 0;
+      const movingTime = Math.round(session.total_timer_time || 0);
+      const fallbackSpeed = distance > 0 && movingTime > 0 ? distance / movingTime : 0;
+
+      // Compute elevation from records if session doesn't have it
+      let elevGain = session.total_ascent || 0;
+      if (!elevGain && records.length > 1) {
+        let prevAlt = null;
+        for (const r of records) {
+          const alt = r.enhanced_altitude ?? r.altitude;
+          if (alt != null && prevAlt != null && alt > prevAlt) elevGain += alt - prevAlt;
+          if (alt != null) prevAlt = alt;
+        }
+        elevGain = Math.round(elevGain);
+      }
+
+      // Compute avg watts from records if session doesn't have it
+      let avgWatts = session.avg_power || null;
+      let maxWatts = session.max_power || null;
+      if (!avgWatts && records.length > 0 && records.some(r => r.power != null)) {
+        const powers = records.map(r => r.power || 0).filter(p => p > 0);
+        if (powers.length) {
+          avgWatts = Math.round(powers.reduce((a, b) => a + b, 0) / powers.length);
+          maxWatts = Math.max(...powers);
+        }
+      }
+
+      // Compute avg HR from records if session doesn't have it
+      let avgHr = session.avg_heart_rate || null;
+      let maxHr = session.max_heart_rate || null;
+      if (!avgHr && records.length > 0 && records.some(r => r.heart_rate != null)) {
+        const hrs = records.map(r => r.heart_rate || 0).filter(h => h > 0);
+        if (hrs.length) {
+          avgHr = Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length);
+          maxHr = Math.max(...hrs);
+        }
+      }
+
       const activity = {
-        name: session.event || null,
+        name: null,
         sport_type: sportMap[session.sport] || session.sport || 'Workout',
         start_date: session.start_time || session.timestamp || (records[0]?.timestamp) || null,
-        distance: session.total_distance || 0,
-        moving_time: Math.round(session.total_timer_time || 0),
-        elapsed_time: Math.round(session.total_elapsed_time || session.total_timer_time || 0),
-        total_elevation_gain: session.total_ascent || 0,
-        average_speed: session.enhanced_avg_speed || session.avg_speed || 0,
+        distance,
+        moving_time: movingTime,
+        elapsed_time: Math.round(session.total_elapsed_time || movingTime || 0),
+        total_elevation_gain: elevGain,
+        average_speed: session.enhanced_avg_speed || session.avg_speed || fallbackSpeed,
         max_speed: session.enhanced_max_speed || session.max_speed || 0,
-        average_watts: session.avg_power || null,
-        max_watts: session.max_power || null,
-        average_heartrate: session.avg_heart_rate || null,
-        max_heartrate: session.max_heart_rate || null,
+        average_watts: avgWatts,
+        max_watts: maxWatts,
+        average_heartrate: avgHr,
+        max_heartrate: maxHr,
         suffer_score: null,
         external_id: null,
         // Enrichment
