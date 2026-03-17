@@ -71,8 +71,8 @@ export const handler = async (event) => {
       completed_at: new Date().toISOString(),
     }).eq('id', uploadId);
 
-    // Clean up raw file from storage
-    await db.storage.from('uploads').remove([storagePath]);
+    // Raw file kept in storage for 30 days in case we need to reprocess.
+    // Cleanup handled by purge-old-activities.mjs.
 
     console.log(`Upload ${uploadId} processed: ${result.reason}`);
   } catch (err) {

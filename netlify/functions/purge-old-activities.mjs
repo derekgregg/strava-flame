@@ -30,10 +30,26 @@ export default async () => {
   console.log(`Purged ${otherCount} Wahoo/Garmin activities older than 30 days`);
   if (otherError) console.error('Other purge error:', otherError);
 
+  // Clean up uploaded files older than 30 days from storage
+  const uploadCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: oldUploads } = await db
+    .from('uploads')
+    .select('id, user_id, file_format')
+    .lt('created_at', uploadCutoff);
+
+  let uploadFilesRemoved = 0;
+  if (oldUploads?.length) {
+    const paths = oldUploads.map(u => `${u.user_id}/${u.id}.${u.file_format}`);
+    await db.storage.from('uploads').remove(paths);
+    await db.from('uploads').delete().lt('created_at', uploadCutoff);
+    uploadFilesRemoved = oldUploads.length;
+    console.log(`Purged ${uploadFilesRemoved} uploaded files older than 30 days`);
+  }
+
   // Clean up expired oauth_state entries
   await db.from('oauth_state').delete().lt('expires_at', new Date().toISOString());
 
-  return new Response(JSON.stringify({ purged: { strava: stravaCount, other: otherCount } }), {
+  return new Response(JSON.stringify({ purged: { strava: stravaCount, other: otherCount, uploads: uploadFilesRemoved } }), {
     headers: { 'Content-Type': 'application/json' },
   });
 };
