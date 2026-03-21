@@ -16,8 +16,8 @@ async function loadSettings() {
         <p>You're not logged in. Connect a platform to get started.</p>
         <div class="connect-buttons" style="margin-top: 20px; justify-content: center;">
           <a href="/api/strava-auth" class="connect-btn strava-btn">Connect Strava</a>
-          <a href="/api/wahoo-auth" class="connect-btn wahoo-btn">Connect Wahoo</a>
-          <a href="/api/garmin-auth" class="connect-btn garmin-btn">Connect Garmin</a>
+          <span class="connect-btn wahoo-btn" style="pointer-events: none; opacity: 0.4;">Wahoo (coming soon)</span>
+          <span class="connect-btn garmin-btn" style="pointer-events: none; opacity: 0.4;">Garmin (not available)</span>
         </div>
       </div>
     `;
@@ -103,6 +103,7 @@ async function loadSettings() {
 function renderPlatformRow(platform, label, connected, connections) {
   const isConnected = connected.includes(platform);
   const conn = connections.find(c => c.platform === platform);
+  const unavailable = platform === 'garmin' || platform === 'wahoo';
 
   if (isConnected) {
     const date = conn ? new Date(conn.connected_at).toLocaleDateString() : '';
@@ -111,6 +112,17 @@ function renderPlatformRow(platform, label, connected, connections) {
         <span class="platform-name">${label}</span>
         <span class="badge-tracked">Connected ${date}</span>
         <button class="disconnect-btn danger" data-platform="${platform}">Disconnect</button>
+      </div>
+    `;
+  }
+
+  if (unavailable) {
+    const reason = platform === 'garmin' ? 'Not available' : 'Coming soon';
+    return `
+      <div class="platform-row" style="opacity: 0.5;">
+        <span class="platform-name">${label}</span>
+        <span class="badge-untracked">${reason}</span>
+        <span class="connect-btn small" style="pointer-events: none; opacity: 0.4;">Connect</span>
       </div>
     `;
   }
