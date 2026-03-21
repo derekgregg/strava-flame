@@ -415,6 +415,8 @@ header p {
   font-size: 0.9rem;
   line-height: 1.6;
   color: var(--text);
+  position: relative;
+  z-index: 1;
 }
 
 /* Rule tooltips */
@@ -442,7 +444,7 @@ header p {
   line-height: 1.4;
   width: 280px;
   white-space: normal;
-  z-index: 10;
+  z-index: 1000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   pointer-events: none;
   margin-bottom: 6px;
