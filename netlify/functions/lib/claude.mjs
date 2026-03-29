@@ -73,12 +73,91 @@ function buildPrompt(activity, athlete) {
     stats.push(`Training Stress Score: ${activity.power_analysis.tss}`);
   }
 
-  // Interval detection
-  if (activity.power_analysis?.intervals) {
-    const ints = activity.power_analysis.intervals;
-    stats.push(`Detected ${ints.length} intervals: ${ints.map((iv, i) =>
-      `#${i + 1}: ${formatDuration(iv.duration)} @ ${fmt(iv.avg_power)} W (${iv.pct_ftp}% FTP)`
-    ).join(', ')}`);
+  // Interval detection (enhanced or legacy)
+  const intervals = activity.ride_analysis?.power?.intervals || activity.power_analysis?.intervals;
+  if (intervals) {
+    const ints = intervals;
+    const intDetails = ints.map((iv, i) => {
+      let desc = `#${i + 1}: ${formatDuration(iv.duration)} @ ${fmt(iv.avg_power)} W`;
+      if (iv.pct_ftp) desc += ` (${iv.pct_ftp}% FTP)`;
+      else if (iv.pct_avg) desc += ` (${iv.pct_avg}% of ride avg)`;
+      if (iv.type) desc += ` [${iv.type}]`;
+      if (iv.fatigue_pct != null && iv.fatigue_pct !== 0) desc += ` fade: ${iv.fatigue_pct > 0 ? '+' : ''}${iv.fatigue_pct}%`;
+      if (iv.avg_hr) desc += ` HR: ${iv.avg_hr}`;
+      return desc;
+    });
+    stats.push(`Detected ${ints.length} intervals: ${intDetails.join(', ')}`);
+  }
+
+  // Climb detection
+  const climbs = activity.ride_analysis?.climbs;
+  if (climbs?.length) {
+    const climbDetails = climbs.map((c, i) => {
+      let desc = `${c.category_label} climb: ${formatDistance(c.distance)} @ ${c.avg_gradient}% avg (${c.max_gradient}% max), +${c.elevation_gain}m`;
+      if (c.avg_power) desc += `, ${fmt(c.avg_power)} W`;
+      if (c.normalized_power) desc += ` (NP: ${fmt(c.normalized_power)} W)`;
+      if (c.vam) desc += `, VAM ${fmt(c.vam)}`;
+      if (c.avg_hr) desc += `, HR ${c.avg_hr}`;
+      if (c.avg_speed) desc += `, ${formatSpeed(c.avg_speed)}`;
+      return desc;
+    });
+    stats.push(`Climbs: ${climbDetails.join(' | ')}`);
+  }
+
+  // Ride segmentation
+  const segments = activity.ride_analysis?.segments;
+  if (segments?.length) {
+    const segSummary = segments.map(s => {
+      let desc = `${s.type} (${formatDuration(s.duration)}`;
+      if (s.avg_power) desc += ` @ ${fmt(s.avg_power)} W`;
+      desc += ')';
+      return desc;
+    }).join(' → ');
+    stats.push(`Ride structure: ${segSummary}`);
+  }
+
+  // W'bal
+  const wprime = activity.ride_analysis?.wprime;
+  if (wprime) {
+    let wDesc = `Anaerobic reserves: dropped to ${wprime.min_balance_pct}% W'bal at ${formatDuration(wprime.min_balance_time)}`;
+    if (wprime.depletion_count > 0) wDesc += `, ${wprime.depletion_count} deep digs below 25%`;
+    if (wprime.near_empty_seconds > 0) wDesc += `, ${wprime.near_empty_seconds}s near empty (<10%)`;
+    stats.push(wDesc);
+  }
+
+  // HR analysis
+  const hrAnalysis = activity.ride_analysis?.hr_analysis;
+  if (hrAnalysis) {
+    const zoneSummary = hrAnalysis.zones
+      .filter(z => z.pct > 0)
+      .map(z => `Z${z.zone}: ${z.pct}%`)
+      .join(', ');
+    if (zoneSummary) stats.push(`HR zones: ${zoneSummary}`);
+    if (hrAnalysis.drift) {
+      const driftDir = hrAnalysis.drift.drift_pct > 0 ? 'decoupling (fatigue)' : 'improving efficiency';
+      stats.push(`Cardiac drift: ${hrAnalysis.drift.drift_pct}% ${driftDir}`);
+    }
+  }
+
+  // Pacing analysis
+  const pacing = activity.ride_analysis?.pacing;
+  if (pacing) {
+    const pacingNotes = [];
+    if (pacing.negative_split) pacingNotes.push('negative split (stronger second half)');
+    if (pacing.fade_pct != null && Math.abs(pacing.fade_pct) > 3) {
+      pacingNotes.push(`${pacing.fade_pct > 0 ? '' : '-'}${Math.abs(pacing.fade_pct)}% power fade`);
+    }
+    if (pacing.power_gradient_correlation != null) {
+      const desc = pacing.power_gradient_correlation > 0.2 ? 'pushed hard uphill' :
+        pacing.power_gradient_correlation < -0.2 ? 'eased off on climbs' : 'even effort regardless of terrain';
+      pacingNotes.push(`power-gradient: ${pacing.power_gradient_correlation} (${desc})`);
+    }
+    if (pacing.coefficient_of_variation != null) {
+      const evennessDesc = pacing.coefficient_of_variation < 0.3 ? 'very even' :
+        pacing.coefficient_of_variation < 0.5 ? 'moderate variation' : 'highly variable';
+      pacingNotes.push(`power CV: ${pacing.coefficient_of_variation} (${evennessDesc})`);
+    }
+    if (pacingNotes.length) stats.push(`Pacing: ${pacingNotes.join(', ')}`);
   }
 
   // Lap splits from file upload
@@ -178,8 +257,13 @@ How to read the data:
 - Best efforts show the rider's peak capabilities at different durations. A strong short effort (5s-1min) shows sprint/anaerobic power. A strong medium effort (3-8min) shows VO2max power. A strong long effort (20-60min) shows threshold endurance. These are useful for placing the rider in a category, but do NOT compare them against each other — a 5min effort will always be higher than a 20min effort, that's just physiology.
 - Average power and Normalized Power are misleading on hilly or interval rides. A rider who hammers climbs and recovers on descents will have low average power but high NP and high TSS — that's smart riding.
 - High Variability Index (VI > 1.1) on a hilly ride is EXPECTED and CORRECT. Only mock high VI on flat rides where it means erratic pacing.
-- If you see intervals detected, acknowledge the structured work but find something to mock about execution (fade on later intervals, inconsistent power, etc.).
+- If you see intervals detected, acknowledge the structured work but find something to mock about execution (fade on later intervals, inconsistent power, etc.). Fatigue % shows how power changed vs the first interval — negative means fading.
 - Intensity Factor (IF) = NP/FTP. IF > 0.85 is a hard ride. IF > 0.95 is racing intensity. IF < 0.65 is a recovery ride.
+- Climbs are categorized Cat 4 (easiest) through HC (hardest) using the Fiets formula. VAM (vertical ascent meters/hour) above 1000 is strong, above 1500 is elite. Power and HR on climbs tell the real story of how they suffered.
+- Ride structure shows how the ride was segmented by effort. Look for patterns: structured workouts (warmup → intervals → cooldown), poorly paced rides (all-out then bonk), or aimless junk miles (all easy, no purpose).
+- W'bal tracks anaerobic reserves. When W'bal drops below 25%, the rider is deep in the pain cave. Below 10% means they are on the verge of blowing up. Multiple deep digs suggest either a hard race or poor pacing.
+- Cardiac drift: positive % means HR rose relative to power (fatigue). 5-10% drift is normal for long rides. Above 10% suggests dehydration, heat, or going too hard too early.
+- Pacing: power-gradient correlation > 0.2 means the rider pushed harder uphill (correct for racing/climbing). Power CV < 0.3 is very even pacing (time trial style). Negative split means stronger second half.
 
 Guidelines:
 - STRICTLY 2-3 sentences. No more. Be concise and punchy.

@@ -2,9 +2,12 @@ import { getSupabase } from './supabase.mjs';
 import { generateRoast } from './claude.mjs';
 import { computeDedupKey, findDuplicate } from './dedup.mjs';
 import { analyzePower } from './power-analysis.mjs';
+import { analyzeRide } from './ride-analysis.mjs';
 
 function buildEnrichmentData(activity) {
   const data = {};
+
+  // Legacy power analysis fields (backward compat)
   if (activity.power_curve) data.best_efforts = activity.power_curve;
   if (activity.power_analysis) {
     if (activity.power_analysis.best_efforts) data.best_efforts = activity.power_analysis.best_efforts;
@@ -13,31 +16,42 @@ function buildEnrichmentData(activity) {
     if (activity.power_analysis.tss) data.tss = activity.power_analysis.tss;
     if (activity.power_analysis.intervals) data.intervals = activity.power_analysis.intervals;
   }
+
+  // Rich ride analysis (overrides power analysis where both exist)
+  const ra = activity.ride_analysis;
+  if (ra) {
+    if (ra.power) {
+      if (ra.power.best_efforts) data.best_efforts = ra.power.best_efforts;
+      if (ra.power.variability_index) data.variability_index = ra.power.variability_index;
+      if (ra.power.intensity_factor) data.intensity_factor = ra.power.intensity_factor;
+      if (ra.power.tss) data.tss = ra.power.tss;
+      if (ra.power.intervals) data.intervals = ra.power.intervals;
+      if (ra.power.normalized_power) data.normalized_power = ra.power.normalized_power;
+    }
+    if (ra.climbs?.length) data.climbs = ra.climbs;
+    if (ra.segments?.length) data.segments = ra.segments;
+    if (ra.wprime) data.wprime = ra.wprime;
+    if (ra.hr_analysis) data.hr_analysis = ra.hr_analysis;
+    if (ra.pacing) data.pacing = ra.pacing;
+  }
+
   return Object.keys(data).length > 0 ? data : null;
 }
 
-// Fetch Strava power streams and run power analysis.
-// Returns enrichment data or null.
-async function fetchStravaPowerAnalysis(platformActivityId, athleteId, ftp, avgPower) {
+// Fetch all Strava streams and run comprehensive ride analysis.
+// Returns full ride analysis object or null.
+async function fetchStravaRideAnalysis(platformActivityId, athleteId, options = {}) {
   try {
-    const { getActivityStreams } = await import('./strava.mjs');
-    const streams = await getActivityStreams(athleteId, platformActivityId);
-    if (!streams) return null;
+    const { getActivityStreams, normalizeStreams } = await import('./strava.mjs');
+    const rawStreams = await getActivityStreams(athleteId, platformActivityId);
+    if (!rawStreams) return null;
 
-    // Strava returns streams as array of { type, data } or keyed object
-    let powerData;
-    if (Array.isArray(streams)) {
-      const powerStream = streams.find(s => s.type === 'watts');
-      powerData = powerStream?.data;
-    } else {
-      powerData = streams.watts?.data;
-    }
+    const streams = normalizeStreams(rawStreams);
+    if (!streams?.time?.length) return null;
 
-    if (!powerData?.length) return null;
-
-    return analyzePower(powerData, ftp, avgPower);
+    return analyzeRide(streams, options);
   } catch (err) {
-    console.error('Strava streams fetch failed:', err.message);
+    console.error('Strava ride analysis failed:', err.message);
     return null;
   }
 }
@@ -183,19 +197,39 @@ export async function processActivity({ userId, platform, platformActivityId, ac
 
   const activityDbId = inserted?.id || row.id;
 
-  // Fetch per-second power data from Strava streams (if available and not already analyzed)
-  if (platform === 'strava' && activity.average_watts && !activity.power_analysis) {
-    const athleteId = parseInt(platformActivityId) || row.athlete_id;
-    const analysis = await fetchStravaPowerAnalysis(platformActivityId, athleteId, user?.ftp, activity.average_watts);
-    if (analysis) {
-      activity.power_analysis = analysis;
-      activity.power_curve = analysis.best_efforts;
-      if (analysis.normalized_power) activity.normalized_power = analysis.normalized_power;
+  // Run comprehensive ride analysis from streams
+  const analysisOptions = { ftp: user?.ftp, weight: user?.weight };
 
-      // Update the stored enrichment data
+  if (platform === 'strava' && !activity.ride_analysis) {
+    // Fetch all Strava streams and analyze
+    const athleteId = parseInt(platformActivityId) || row.athlete_id;
+    const rideAnalysis = await fetchStravaRideAnalysis(platformActivityId, athleteId, analysisOptions);
+    if (rideAnalysis) {
+      activity.ride_analysis = rideAnalysis;
+      // Backfill legacy fields for backward compat
+      if (rideAnalysis.power) {
+        activity.power_analysis = rideAnalysis.power;
+        activity.power_curve = rideAnalysis.power.best_efforts;
+        if (rideAnalysis.power.normalized_power) activity.normalized_power = rideAnalysis.power.normalized_power;
+      }
       await db.from('activities').update({
         enrichment_data: buildEnrichmentData(activity),
-        normalized_power: analysis.normalized_power ? Math.round(analysis.normalized_power) : null,
+        normalized_power: rideAnalysis.power?.normalized_power ? Math.round(rideAnalysis.power.normalized_power) : null,
+      }).eq('id', activityDbId);
+    }
+  } else if (activity.streams && !activity.ride_analysis) {
+    // File upload with extracted streams — analyze directly
+    const rideAnalysis = analyzeRide(activity.streams, analysisOptions);
+    if (rideAnalysis) {
+      activity.ride_analysis = rideAnalysis;
+      if (rideAnalysis.power) {
+        activity.power_analysis = rideAnalysis.power;
+        activity.power_curve = rideAnalysis.power.best_efforts;
+        if (rideAnalysis.power.normalized_power) activity.normalized_power = rideAnalysis.power.normalized_power;
+      }
+      await db.from('activities').update({
+        enrichment_data: buildEnrichmentData(activity),
+        normalized_power: rideAnalysis.power?.normalized_power ? Math.round(rideAnalysis.power.normalized_power) : null,
       }).eq('id', activityDbId);
     }
   }

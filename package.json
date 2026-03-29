@@ -12,7 +12,9 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "@supabase/supabase-js": "^2.49.1",
     "fast-xml-parser": "^5.5.6",
-    "fit-file-parser": "^2.3.3"
+    "fit-file-parser": "^2.3.3",
+    "ml-savitzky-golay": "^5.0.0",
+    "simple-statistics": "^7.8.9"
   },
   "devDependencies": {
     "vite": "^6.2.2"

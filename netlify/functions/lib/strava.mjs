@@ -152,11 +152,52 @@ export async function getAthleteActivities(athleteId, after) {
 export async function getActivityStreams(athleteId, activityId) {
   const token = await refreshAccessToken(String(athleteId));
   const res = await fetch(
-    `${STRAVA_API}/activities/${activityId}/streams?keys=watts,heartrate,cadence,time&key_by_type=true`,
+    `${STRAVA_API}/activities/${activityId}/streams?keys=time,latlng,distance,altitude,velocity_smooth,heartrate,cadence,watts,temp,moving,grade_smooth&key_by_type=true`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) return null;
   return res.json();
+}
+
+// Convert Strava streams response to canonical streams object.
+// Strava returns { watts: { data: [...] }, heartrate: { data: [...] }, ... }
+// or an array of { type, data } objects. We normalize to a flat keyed object.
+export function normalizeStreams(stravaStreams) {
+  if (!stravaStreams) return null;
+
+  // Handle array format
+  if (Array.isArray(stravaStreams)) {
+    const keyed = {};
+    for (const s of stravaStreams) keyed[s.type] = s.data;
+    return {
+      time: keyed.time || null,
+      watts: keyed.watts || null,
+      heartrate: keyed.heartrate || null,
+      cadence: keyed.cadence || null,
+      altitude: keyed.altitude || null,
+      distance: keyed.distance || null,
+      velocity_smooth: keyed.velocity_smooth || null,
+      grade_smooth: keyed.grade_smooth || null,
+      latlng: keyed.latlng || null,
+      temp: keyed.temp || null,
+      moving: keyed.moving || null,
+    };
+  }
+
+  // Handle keyed object format
+  return {
+    time: stravaStreams.time?.data || null,
+    watts: stravaStreams.watts?.data || null,
+    heartrate: stravaStreams.heartrate?.data || null,
+    cadence: stravaStreams.cadence?.data || null,
+    altitude: stravaStreams.altitude?.data || null,
+    distance: stravaStreams.distance?.data || null,
+    velocity_smooth: stravaStreams.velocity_smooth?.data || null,
+    grade_smooth: stravaStreams.grade_smooth?.data || null,
+    latlng: stravaStreams.latlng?.data || null,
+    temp: stravaStreams.temp?.data || null,
+    moving: stravaStreams.moving?.data || null,
+  };
 }
 
 // Normalize Strava activity to our standard format

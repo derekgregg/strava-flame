@@ -19,6 +19,163 @@ export async function parseActivityFile(buffer, filename) {
   }
 }
 
+// Extract canonical streams object from FIT per-second records.
+// Matches the same format as normalizeStreams() in strava.mjs.
+function extractStreamsFromRecords(records) {
+  if (!records?.length) return null;
+
+  const startTime = records[0].timestamp;
+  const hasPower = records.some(r => r.power != null);
+  const hasHR = records.some(r => r.heart_rate != null);
+  const hasCadence = records.some(r => r.cadence != null);
+  const hasAltitude = records.some(r => (r.enhanced_altitude ?? r.altitude) != null);
+  const hasDistance = records.some(r => r.distance != null);
+  const hasSpeed = records.some(r => (r.enhanced_speed ?? r.speed) != null);
+  const hasGPS = records.some(r => r.position_lat != null && r.position_long != null);
+  const hasTemp = records.some(r => r.temperature != null);
+
+  const streams = {
+    time: [],
+    watts: hasPower ? [] : null,
+    heartrate: hasHR ? [] : null,
+    cadence: hasCadence ? [] : null,
+    altitude: hasAltitude ? [] : null,
+    distance: hasDistance ? [] : null,
+    velocity_smooth: hasSpeed ? [] : null,
+    grade_smooth: null, // computed below if possible
+    latlng: hasGPS ? [] : null,
+    temp: hasTemp ? [] : null,
+    moving: null,
+  };
+
+  for (const r of records) {
+    const t = r.timestamp instanceof Date
+      ? Math.round((r.timestamp - startTime) / 1000)
+      : Math.round((r.timestamp - startTime));
+    streams.time.push(t);
+
+    if (hasPower) streams.watts.push(r.power || 0);
+    if (hasHR) streams.heartrate.push(r.heart_rate || 0);
+    if (hasCadence) streams.cadence.push(r.cadence || 0);
+    if (hasAltitude) streams.altitude.push(r.enhanced_altitude ?? r.altitude ?? 0);
+    if (hasDistance) streams.distance.push(r.distance || 0);
+    if (hasSpeed) streams.velocity_smooth.push(r.enhanced_speed ?? r.speed ?? 0);
+    if (hasGPS) {
+      streams.latlng.push(
+        r.position_lat != null && r.position_long != null
+          ? [r.position_lat, r.position_long]
+          : null
+      );
+    }
+    if (hasTemp) streams.temp.push(r.temperature ?? 0);
+  }
+
+  // Compute grade_smooth from altitude + distance if both exist
+  if (hasAltitude && hasDistance) {
+    streams.grade_smooth = [];
+    for (let i = 0; i < streams.altitude.length; i++) {
+      if (i === 0) {
+        streams.grade_smooth.push(0);
+      } else {
+        const dAlt = streams.altitude[i] - streams.altitude[i - 1];
+        const dDist = streams.distance[i] - streams.distance[i - 1];
+        streams.grade_smooth.push(dDist > 0.5 ? (dAlt / dDist) * 100 : streams.grade_smooth[i - 1] || 0);
+      }
+    }
+  }
+
+  return streams;
+}
+
+// Extract canonical streams from GPX trackpoints.
+function extractStreamsFromGPX(points) {
+  if (!points?.length || points.length < 2) return null;
+
+  const firstTime = points[0].time ? new Date(points[0].time) : null;
+  if (!firstTime) return null;
+
+  const hasEle = points.some(pt => pt.ele != null);
+  const hasHR = points.some(pt => {
+    const ext = pt.extensions;
+    const tpx = ext?.TrackPointExtension || ext;
+    return tpx && (parseInt(tpx.hr) || parseInt(tpx.heartrate)) > 0;
+  });
+  const hasPower = points.some(pt => {
+    const ext = pt.extensions;
+    const tpx = ext?.TrackPointExtension || ext;
+    return tpx && (parseInt(tpx.power) || parseInt(ext?.power)) > 0;
+  });
+  const hasCadence = points.some(pt => {
+    const ext = pt.extensions;
+    const tpx = ext?.TrackPointExtension || ext;
+    return tpx && (parseInt(tpx.cad) || parseInt(tpx.cadence)) > 0;
+  });
+
+  const streams = {
+    time: [],
+    watts: hasPower ? [] : null,
+    heartrate: hasHR ? [] : null,
+    cadence: hasCadence ? [] : null,
+    altitude: hasEle ? [] : null,
+    distance: [],
+    velocity_smooth: [],
+    grade_smooth: null,
+    latlng: [],
+    temp: null,
+    moving: null,
+  };
+
+  let cumDist = 0;
+  for (let i = 0; i < points.length; i++) {
+    const pt = points[i];
+    const ptTime = pt.time ? new Date(pt.time) : null;
+    if (!ptTime) continue;
+
+    const timeSec = Math.round((ptTime - firstTime) / 1000);
+    streams.time.push(timeSec);
+
+    const lat = parseFloat(pt['@_lat']), lon = parseFloat(pt['@_lon']);
+    streams.latlng.push(!isNaN(lat) && !isNaN(lon) ? [lat, lon] : null);
+
+    if (i > 0) {
+      const prev = points[i - 1];
+      const lat1 = parseFloat(prev['@_lat']), lon1 = parseFloat(prev['@_lon']);
+      const dist = haversine(lat1, lon1, lat, lon);
+      cumDist += dist;
+      const prevTime = new Date(prev.time);
+      const dt = (ptTime - prevTime) / 1000;
+      streams.velocity_smooth.push(dt > 0 ? dist / dt : 0);
+    } else {
+      streams.velocity_smooth.push(0);
+    }
+    streams.distance.push(cumDist);
+
+    if (hasEle) streams.altitude.push(parseFloat(pt.ele) || 0);
+
+    const ext = pt.extensions;
+    const tpx = ext?.TrackPointExtension || ext;
+    if (hasHR) streams.heartrate.push(parseInt(tpx?.hr) || parseInt(tpx?.heartrate) || 0);
+    if (hasCadence) streams.cadence.push(parseInt(tpx?.cad) || parseInt(tpx?.cadence) || 0);
+    if (hasPower) streams.watts.push(parseInt(tpx?.power) || parseInt(ext?.power) || 0);
+  }
+
+  // Compute grade_smooth from altitude + distance
+  if (hasEle && streams.distance.length > 0) {
+    streams.grade_smooth = [];
+    for (let i = 0; i < streams.altitude.length; i++) {
+      if (i === 0) {
+        streams.grade_smooth.push(0);
+      } else {
+        const dAlt = streams.altitude[i] - streams.altitude[i - 1];
+        const dDist = streams.distance[i] - streams.distance[i - 1];
+        streams.grade_smooth.push(dDist > 0.5 ? (dAlt / dDist) * 100 : streams.grade_smooth[i - 1] || 0);
+      }
+    }
+  }
+
+  return streams;
+}
+
 // --- FIT ---
 
 function parseFIT(buffer) {
@@ -122,6 +279,11 @@ function parseFIT(buffer) {
         if (analysis.normalized_power) activity.normalized_power = analysis.normalized_power;
         if (analysis.variability_index) activity.variability_index = analysis.variability_index;
         activity.power_analysis = analysis;
+      }
+
+      // Extract per-second streams for ride analysis
+      if (records.length > 0) {
+        activity.streams = extractStreamsFromRecords(records);
       }
 
       // Extract GPS track and encode as polyline
@@ -247,7 +409,7 @@ function parseGPX(buffer) {
   const elapsedTime = firstTime && lastTime ? Math.round((lastTime - firstTime) / 1000) : 0;
   const avgSpeed = speeds.length > 0 ? speeds.reduce((a, b) => a + b, 0) / speeds.length : 0;
 
-  return {
+  const activity = {
     name: track.name || null,
     sport_type: guessGPXSport(avgSpeed),
     start_date: firstTime ? firstTime.toISOString() : null,
@@ -271,6 +433,11 @@ function parseGPX(buffer) {
     power_curve: null,
     route_polyline: gpsCoords.length > 1 ? encodePolyline(simplify(gpsCoords, 0.00003)) : null,
   };
+
+  // Extract per-second streams for ride analysis
+  activity.streams = extractStreamsFromGPX(points);
+
+  return activity;
 }
 
 function haversine(lat1, lon1, lat2, lon2) {
