@@ -71,12 +71,14 @@ Duration is NOT used for dedup — Strava excludes stopped time, Garmin/FIT file
 - **No "Strava" in app name.** The app is "Le Directeur".
 - Full agreement saved in `docs/strava-api-agreement.md`.
 
-### Wahoo
+### Wahoo (INACTIVE)
+- API access request never received a response. Connect option disabled in UI, code retained.
 - No hard data retention limit. We use 30-day retention.
 - Must attribute with Wahoo branding.
 - Full agreement saved in `docs/wahoo-api-agreement.md`.
 
-### Garmin
+### Garmin (INACTIVE)
+- API access was denied. Connect option disabled in UI, code retained.
 - No hard data retention limit. We use 30-day retention.
 - Must display "Garmin [device model]" attribution.
 - Agreement provided during developer application (not public).
